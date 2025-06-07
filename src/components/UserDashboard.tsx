@@ -19,7 +19,8 @@ import {
   Crown,
   ExternalLink,
   Pocket as Docker,
-  Package
+  Package,
+  RefreshCw
 } from 'lucide-react';
 import { UserAddonsPage } from './UserAddonsPage';
 
@@ -46,7 +47,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
       billingCycle: 'monthly',
       environment: [
         { key: 'N8N_BASIC_AUTH_ACTIVE', value: 'true' },
-        { key: 'N8N_BASIC_AUTH_USER', value: 'admin' }
+        { key: 'N8N_BASIC_AUTH_USER', value: 'admin' },
+        { key: 'N8N_BASIC_AUTH_PASSWORD', value: 'SecurePass123!' }
       ],
       ports: [{ internal: 5678, external: 5678, protocol: 'HTTP' }]
     },
@@ -63,8 +65,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
       createdAt: '2024-01-20',
       billingCycle: 'monthly',
       environment: [
-        { key: 'POSTGRES_PASSWORD', value: '***' },
-        { key: 'REDIS_PASSWORD', value: '***' }
+        { key: 'POSTGRES_PASSWORD', value: 'DbPass456!' },
+        { key: 'REDIS_PASSWORD', value: 'RedisPass789!' },
+        { key: 'SECRET_KEY_BASE', value: 'SecretKey123456789!' }
       ],
       ports: [{ internal: 3000, external: 3000, protocol: 'HTTP' }]
     }
@@ -82,9 +85,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
       status: 'published',
       description: 'Powerful workflow automation platform',
       environment: [
-        { key: 'N8N_BASIC_AUTH_ACTIVE', value: 'true', required: true },
-        { key: 'N8N_BASIC_AUTH_USER', value: 'admin', required: true },
-        { key: 'N8N_BASIC_AUTH_PASSWORD', value: '', required: true, secret: true }
+        { key: 'N8N_BASIC_AUTH_ACTIVE', value: 'true', required: true, autoGenerate: false },
+        { key: 'N8N_BASIC_AUTH_USER', value: 'admin', required: true, autoGenerate: false },
+        { key: 'N8N_BASIC_AUTH_PASSWORD', value: '', required: true, secret: true, autoGenerate: true }
       ],
       ports: [{ internal: 5678, external: 5678, protocol: 'HTTP' }]
     },
@@ -98,8 +101,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
       status: 'published',
       description: 'Customer engagement platform',
       environment: [
-        { key: 'POSTGRES_PASSWORD', value: '', required: true, secret: true },
-        { key: 'REDIS_PASSWORD', value: '', required: true, secret: true }
+        { key: 'POSTGRES_PASSWORD', value: '', required: true, secret: true, autoGenerate: true },
+        { key: 'REDIS_PASSWORD', value: '', required: true, secret: true, autoGenerate: true },
+        { key: 'SECRET_KEY_BASE', value: '', required: true, secret: true, autoGenerate: true },
+        { key: 'POSTGRES_USER', value: 'chatwoot', required: true, autoGenerate: false },
+        { key: 'POSTGRES_DB', value: 'chatwoot_production', required: true, autoGenerate: false }
       ],
       ports: [{ internal: 3000, external: 3000, protocol: 'HTTP' }]
     },
@@ -113,9 +119,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
       status: 'published',
       description: 'Reliable PostgreSQL database',
       environment: [
-        { key: 'POSTGRES_DB', value: 'myapp', required: true },
-        { key: 'POSTGRES_USER', value: 'admin', required: true },
-        { key: 'POSTGRES_PASSWORD', value: '', required: true, secret: true }
+        { key: 'POSTGRES_DB', value: 'myapp', required: true, autoGenerate: false },
+        { key: 'POSTGRES_USER', value: 'admin', required: true, autoGenerate: false },
+        { key: 'POSTGRES_PASSWORD', value: '', required: true, secret: true, autoGenerate: true }
       ],
       ports: [{ internal: 5432, external: 5432, protocol: 'TCP' }]
     }
@@ -134,6 +140,29 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
 
   // Custom domain pricing (could be fetched from admin settings)
   const customDomainPrice = 25; // credits per month
+
+  // Auto-generation functions
+  const generatePassword = (length: number = 16) => {
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return password;
+  };
+
+  const generateSecretKey = (length: number = 32) => {
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let key = '';
+    for (let i = 0; i < length; i++) {
+      key += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return key;
+  };
+
+  const generateUsername = (serviceName: string) => {
+    return serviceName.toLowerCase().replace(/[^a-z0-9]/g, '') + '_' + Math.random().toString(36).substring(2, 8);
+  };
 
   // Function to generate unique domain
   const generateDomain = (name: string, serviceId?: number) => {
@@ -210,11 +239,34 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
 
   const handleServiceTypeSelect = (serviceType: any) => {
     setSelectedServiceType(serviceType);
-    // Initialize environment variables with default values
-    setServiceEnvironment(serviceType.environment.map((env: any) => ({
+    // Initialize environment variables with default values and auto-generate where needed
+    const initializedEnv = serviceType.environment.map((env: any) => ({
       ...env,
-      value: env.value || ''
-    })));
+      value: env.autoGenerate ? 
+        (env.key.toLowerCase().includes('password') ? generatePassword() :
+         env.key.toLowerCase().includes('secret') ? generateSecretKey() :
+         env.key.toLowerCase().includes('user') && env.autoGenerate ? generateUsername(serviceName || 'user') :
+         env.value) : env.value
+    }));
+    setServiceEnvironment(initializedEnv);
+  };
+
+  const regenerateEnvironmentValue = (index: number) => {
+    const env = serviceEnvironment[index];
+    if (env.autoGenerate) {
+      let newValue = '';
+      if (env.key.toLowerCase().includes('password')) {
+        newValue = generatePassword();
+      } else if (env.key.toLowerCase().includes('secret')) {
+        newValue = generateSecretKey();
+      } else if (env.key.toLowerCase().includes('user')) {
+        newValue = generateUsername(serviceName || 'user');
+      }
+      
+      const newEnv = [...serviceEnvironment];
+      newEnv[index] = { ...newEnv[index], value: newValue };
+      setServiceEnvironment(newEnv);
+    }
   };
 
   const updateEnvironmentValue = (index: number, value: string) => {
@@ -557,6 +609,13 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
                         <span className="text-blue-400 text-sm font-mono">{service.dockerImage}</span>
                       </div>
                       <p className="text-white/70 text-sm">{service.description}</p>
+                      {service.environment.some(env => env.autoGenerate) && (
+                        <div className="mt-2 p-2 bg-green-500/10 rounded border border-green-500/20">
+                          <p className="text-green-400 text-xs">
+                            ✓ Auto-generates secure passwords and secrets
+                          </p>
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -603,21 +662,40 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, on
                       <div className="space-y-3">
                         {serviceEnvironment.map((env, index) => (
                           <div key={index}>
-                            <label className="block text-white/70 text-xs font-medium mb-1">
-                              {env.key}
-                              {env.required && <span className="text-red-400 ml-1">*</span>}
-                              {env.secret && <span className="text-yellow-400 ml-1">(Secret)</span>}
-                            </label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-white/70 text-xs font-medium">
+                                {env.key}
+                                {env.required && <span className="text-red-400 ml-1">*</span>}
+                                {env.secret && <span className="text-yellow-400 ml-1">(Secret)</span>}
+                                {env.autoGenerate && <span className="text-green-400 ml-1">(Auto-generated)</span>}
+                              </label>
+                              {env.autoGenerate && (
+                                <button
+                                  onClick={() => regenerateEnvironmentValue(index)}
+                                  className="text-green-400 hover:text-green-300 text-xs flex items-center"
+                                  title="Regenerate value"
+                                >
+                                  <RefreshCw className="w-3 h-3 mr-1" />
+                                  Regenerate
+                                </button>
+                              )}
+                            </div>
                             <input
                               type={env.secret ? "password" : "text"}
                               value={env.value}
                               onChange={(e) => updateEnvironmentValue(index, e.target.value)}
-                              placeholder={`Enter ${env.key}`}
+                              placeholder={env.autoGenerate ? "Auto-generated" : `Enter ${env.key}`}
                               className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-purple-500 focus:outline-none text-sm"
                               required={env.required}
+                              readOnly={env.autoGenerate}
                             />
                           </div>
                         ))}
+                      </div>
+                      <div className="mt-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                        <p className="text-green-400 text-sm">
+                          ✓ Secure passwords and secrets have been automatically generated for you!
+                        </p>
                       </div>
                     </div>
                   )}
