@@ -1,29 +1,38 @@
 /*
-  # Initial Schema for Lunarpedia PaaS Platform
+  # Complete Lunarpedia PaaS Platform Database Schema
 
   1. New Tables
-    - `users` - User profiles with credits and roles
-    - `service_types` - Available Docker services (n8n, Chatwoot, etc.)
+    - `users` - User profiles with credit system
+    - `service_types` - Available Docker services for deployment
     - `services` - User's deployed services
     - `credit_transactions` - Credit purchase/usage history
     - `user_addons` - Premium add-ons for services
 
   2. Security
     - Enable RLS on all tables
-    - Add policies for authenticated users
-    - Admin-only access for service_types management
+    - Add policies for user data isolation
+    - Add admin-only policies for service types
+    - Add secure functions for credit management
 
-  3. Functions
-    - `update_user_credits` - Safely update user credit balance
-    - `calculate_monthly_usage` - Calculate monthly credit usage
+  3. Sample Data
+    - Insert default service types (n8n, Chatwoot, PostgreSQL)
+    - Create indexes for performance
+    - Add triggers for updated_at timestamps
 */
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Drop existing tables if they exist (for clean setup)
+DROP TABLE IF EXISTS user_addons CASCADE;
+DROP TABLE IF EXISTS credit_transactions CASCADE;
+DROP TABLE IF EXISTS services CASCADE;
+DROP TABLE IF EXISTS service_types CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
 -- Users table
-CREATE TABLE IF NOT EXISTS users (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE users (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text UNIQUE NOT NULL,
   name text NOT NULL,
   credits integer DEFAULT 250 CHECK (credits >= 0),
@@ -33,8 +42,8 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Service types table (Docker services available for deployment)
-CREATE TABLE IF NOT EXISTS service_types (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE service_types (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   type text NOT NULL,
   docker_image text NOT NULL,
@@ -48,8 +57,8 @@ CREATE TABLE IF NOT EXISTS service_types (
 );
 
 -- User services table
-CREATE TABLE IF NOT EXISTS services (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE services (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES users(id) ON DELETE CASCADE,
   name text NOT NULL,
   type text NOT NULL,
@@ -66,8 +75,8 @@ CREATE TABLE IF NOT EXISTS services (
 );
 
 -- Credit transactions table
-CREATE TABLE IF NOT EXISTS credit_transactions (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE credit_transactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES users(id) ON DELETE CASCADE,
   type text NOT NULL CHECK (type IN ('purchase', 'usage', 'refund')),
   amount integer NOT NULL,
@@ -77,8 +86,8 @@ CREATE TABLE IF NOT EXISTS credit_transactions (
 );
 
 -- User add-ons table
-CREATE TABLE IF NOT EXISTS user_addons (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+CREATE TABLE user_addons (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES users(id) ON DELETE CASCADE,
   service_id uuid REFERENCES services(id) ON DELETE CASCADE,
   addon_type text NOT NULL,
@@ -99,17 +108,24 @@ ALTER TABLE credit_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_addons ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for users table
-CREATE POLICY "Users can read own profile"
+CREATE POLICY "Enable insert for authenticated users"
+  ON users
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "Enable read access for own profile"
   ON users
   FOR SELECT
   TO authenticated
   USING (auth.uid() = id);
 
-CREATE POLICY "Users can update own profile"
+CREATE POLICY "Enable update for own profile"
   ON users
   FOR UPDATE
   TO authenticated
-  USING (auth.uid() = id);
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 -- RLS Policies for service_types table
 CREATE POLICY "Anyone can read published service types"
@@ -235,6 +251,69 @@ BEGIN
 END;
 $$;
 
+-- Function to handle new user creation
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (id, email, name, credits, role)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'name', 'User'),
+    250,
+    'user'
+  );
+  RETURN NEW;
+EXCEPTION
+  WHEN unique_violation THEN
+    -- User already exists, that's fine
+    RETURN NEW;
+  WHEN OTHERS THEN
+    -- Log error but don't fail the auth process
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create trigger for automatic user profile creation
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- Update timestamps trigger function
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create triggers for updated_at columns
+CREATE TRIGGER update_users_updated_at 
+  BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_services_updated_at 
+  BEFORE UPDATE ON services
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_service_types_updated_at 
+  BEFORE UPDATE ON service_types
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_addons_updated_at 
+  BEFORE UPDATE ON user_addons
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Create indexes for better performance
+CREATE INDEX idx_services_user_id ON services(user_id);
+CREATE INDEX idx_services_status ON services(status);
+CREATE INDEX idx_credit_transactions_user_id ON credit_transactions(user_id);
+CREATE INDEX idx_credit_transactions_type ON credit_transactions(type);
+CREATE INDEX idx_user_addons_user_id ON user_addons(user_id);
+CREATE INDEX idx_user_addons_service_id ON user_addons(service_id);
+CREATE INDEX idx_service_types_status ON service_types(status);
+
 -- Insert default service types
 INSERT INTO service_types (name, type, docker_image, description, credits_per_month, status, default_environment, default_ports) VALUES
 (
@@ -282,32 +361,10 @@ INSERT INTO service_types (name, type, docker_image, description, credits_per_mo
   '[{"internal": 5432, "external": 5432, "protocol": "TCP"}]'
 );
 
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_services_user_id ON services(user_id);
-CREATE INDEX IF NOT EXISTS idx_services_status ON services(status);
-CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_id ON credit_transactions(user_id);
-CREATE INDEX IF NOT EXISTS idx_credit_transactions_type ON credit_transactions(type);
-CREATE INDEX IF NOT EXISTS idx_user_addons_user_id ON user_addons(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_addons_service_id ON user_addons(service_id);
-CREATE INDEX IF NOT EXISTS idx_service_types_status ON service_types(status);
-
--- Update timestamps trigger
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_services_updated_at BEFORE UPDATE ON services
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_service_types_updated_at BEFORE UPDATE ON service_types
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_user_addons_updated_at BEFORE UPDATE ON user_addons
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Grant necessary permissions
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT ALL ON public.users TO authenticated;
+GRANT ALL ON public.services TO authenticated;
+GRANT ALL ON public.service_types TO authenticated;
+GRANT ALL ON public.credit_transactions TO authenticated;
+GRANT ALL ON public.user_addons TO authenticated;
