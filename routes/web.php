@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ThemeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,6 +20,10 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Theme routes
+Route::post('/theme/switch', [ThemeController::class, 'switch'])->name('theme.switch');
+Route::get('/theme/current', [ThemeController::class, 'current'])->name('theme.current');
 
 // Authentication routes
 Route::middleware('guest')->group(function () {
