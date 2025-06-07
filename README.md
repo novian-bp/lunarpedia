@@ -14,7 +14,7 @@ Platform-as-a-Service (PaaS) yang powerful untuk mengelola container Docker deng
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Laravel 10 + PHP 8.1+
+- **Backend**: Laravel 11 + PHP 8.2+
 - **Database**: MySQL 8.0+
 - **Frontend**: Blade Templates + Tailwind CSS + Alpine.js
 - **Icons**: Heroicons (SVG)
@@ -22,7 +22,7 @@ Platform-as-a-Service (PaaS) yang powerful untuk mengelola container Docker deng
 
 ## 📋 Persyaratan Sistem
 
-- PHP 8.1 atau lebih tinggi
+- PHP 8.2 atau lebih tinggi
 - Composer
 - MySQL 8.0 atau lebih tinggi
 - Node.js 18+ (untuk build assets)
@@ -205,7 +205,7 @@ database/
 ### Production Setup
 
 1. **Server Requirements**
-   - PHP 8.1+ dengan extensions: BCMath, Ctype, Fileinfo, JSON, Mbstring, OpenSSL, PDO, Tokenizer, XML
+   - PHP 8.2+ dengan extensions: BCMath, Ctype, Fileinfo, JSON, Mbstring, OpenSSL, PDO, Tokenizer, XML
    - MySQL 8.0+
    - Nginx/Apache
    - Composer
