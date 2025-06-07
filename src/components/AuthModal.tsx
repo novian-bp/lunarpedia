@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
+import { X, User, Lock, Mail, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface AuthModalProps {
@@ -14,46 +14,81 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const { signIn, signUp } = useAuth();
 
   const getErrorMessage = (error: any) => {
     if (error?.message?.includes('Invalid login credentials')) {
-      return 'Invalid email or password. Please check your credentials and try again.';
+      return 'Email atau password salah. Silakan periksa kembali kredensial Anda.';
     }
     if (error?.message?.includes('Email not confirmed')) {
-      return 'Please check your email and click the confirmation link before signing in.';
+      return 'Silakan periksa email Anda dan klik link konfirmasi sebelum masuk.';
     }
     if (error?.message?.includes('User already registered')) {
-      return 'An account with this email already exists. Please sign in instead.';
+      return 'Akun dengan email ini sudah ada. Silakan masuk sebagai gantinya.';
     }
     if (error?.message?.includes('Password should be at least')) {
-      return 'Password must be at least 6 characters long.';
+      return 'Password harus minimal 6 karakter.';
     }
-    return error?.message || 'An unexpected error occurred. Please try again.';
+    if (error?.message?.includes('Unable to validate email address')) {
+      return 'Format email tidak valid. Silakan masukkan email yang benar.';
+    }
+    if (error?.message?.includes('Signup is disabled')) {
+      return 'Pendaftaran sementara dinonaktifkan. Silakan coba lagi nanti.';
+    }
+    return error?.message || 'Terjadi kesalahan yang tidak terduga. Silakan coba lagi.';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       let result;
       
       if (isLogin) {
         result = await signIn(email, password);
+        
+        if (result.error) {
+          setError(getErrorMessage(result.error));
+        } else if (result.data?.user) {
+          setSuccess('Berhasil masuk! Mengarahkan ke dashboard...');
+          setTimeout(() => {
+            onClose();
+          }, 1500);
+        }
       } else {
+        // Sign up process
         result = await signUp(email, password, name);
-      }
-
-      if (result.error) {
-        setError(getErrorMessage(result.error));
-      } else if (result.data?.user) {
-        // The useAuth hook will handle the user state update
-        onClose();
+        
+        if (result.error) {
+          setError(getErrorMessage(result.error));
+        } else if (result.data?.user) {
+          // Check if email confirmation is required
+          if (result.data.user && !result.data.session) {
+            setSuccess('Akun berhasil dibuat! Silakan periksa email Anda untuk konfirmasi sebelum masuk.');
+            // Switch to login mode after successful signup
+            setTimeout(() => {
+              setIsLogin(true);
+              setSuccess('');
+              setEmail('');
+              setPassword('');
+              setName('');
+            }, 3000);
+          } else {
+            // Direct login (email confirmation disabled)
+            setSuccess('Akun berhasil dibuat! Selamat datang di Lunarpedia!');
+            setTimeout(() => {
+              onClose();
+            }, 1500);
+          }
+        }
       }
     } catch (err: any) {
+      console.error('Auth error:', err);
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
@@ -63,6 +98,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
   const handleModeSwitch = () => {
     setIsLogin(!isLogin);
     setError('');
+    setSuccess('');
     setEmail('');
     setPassword('');
     setName('');
@@ -80,27 +116,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
 
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-white mb-2">
-            {isLogin ? 'Welcome Back' : 'Create Account'}
+            {isLogin ? 'Selamat Datang Kembali' : 'Buat Akun Baru'}
           </h2>
           <p className="text-white/60">
-            {isLogin ? 'Sign in to your Lunarpedia account' : 'Join Lunarpedia today'}
+            {isLogin ? 'Masuk ke akun Lunarpedia Anda' : 'Bergabung dengan Lunarpedia hari ini'}
           </p>
         </div>
 
+        {/* Success Message */}
+        {success && (
+          <div className="mb-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20 flex items-start space-x-2">
+            <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+            <p className="text-green-400 text-sm">{success}</p>
+          </div>
+        )}
+
+        {/* Error Message */}
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 rounded-lg border border-red-500/20 flex items-start space-x-2">
             <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-red-400 text-sm">{error}</p>
-              {error.includes('Invalid email or password') && (
+              {error.includes('Email atau password salah') && (
                 <p className="text-red-300/70 text-xs mt-1">
-                  Don't have an account?{' '}
+                  Belum punya akun?{' '}
                   <button
                     onClick={handleModeSwitch}
                     className="text-red-300 hover:text-red-200 underline"
                     disabled={loading}
                   >
-                    Sign up here
+                    Daftar di sini
                   </button>
                 </p>
               )}
@@ -111,7 +156,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
-              <label className="block text-white/80 text-sm font-medium mb-2">Full Name</label>
+              <label className="block text-white/80 text-sm font-medium mb-2">Nama Lengkap</label>
               <div className="relative">
                 <User className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40" />
                 <input
@@ -119,7 +164,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-purple-500 focus:outline-none"
-                  placeholder="Enter your full name"
+                  placeholder="Masukkan nama lengkap Anda"
                   required={!isLogin}
                   disabled={loading}
                 />
@@ -128,7 +173,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
           )}
 
           <div>
-            <label className="block text-white/80 text-sm font-medium mb-2">Email Address</label>
+            <label className="block text-white/80 text-sm font-medium mb-2">Alamat Email</label>
             <div className="relative">
               <Mail className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40" />
               <input
@@ -136,7 +181,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-purple-500 focus:outline-none"
-                placeholder="Enter your email"
+                placeholder="Masukkan email Anda"
                 required
                 disabled={loading}
               />
@@ -152,14 +197,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-purple-500 focus:outline-none"
-                placeholder="Enter your password"
+                placeholder="Masukkan password Anda"
                 required
                 disabled={loading}
                 minLength={6}
               />
             </div>
             {!isLogin && (
-              <p className="text-white/50 text-xs mt-1">Password must be at least 6 characters long</p>
+              <p className="text-white/50 text-xs mt-1">Password harus minimal 6 karakter</p>
             )}
           </div>
 
@@ -171,23 +216,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {isLogin ? 'Signing In...' : 'Creating Account...'}
+                {isLogin ? 'Sedang Masuk...' : 'Membuat Akun...'}
               </>
             ) : (
-              isLogin ? 'Sign In' : 'Create Account'
+              isLogin ? 'Masuk' : 'Buat Akun'
             )}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-white/60">
-            {isLogin ? "Don't have an account?" : "Already have an account?"}
+            {isLogin ? "Belum punya akun?" : "Sudah punya akun?"}
             <button
               onClick={handleModeSwitch}
               className="text-purple-400 hover:text-purple-300 ml-1 font-semibold"
               disabled={loading}
             >
-              {isLogin ? 'Sign Up' : 'Sign In'}
+              {isLogin ? 'Daftar' : 'Masuk'}
             </button>
           </p>
         </div>
@@ -195,7 +240,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
         {!isLogin && (
           <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
             <p className="text-blue-400 text-sm text-center">
-              New users receive 250 welcome credits to get started!
+              Pengguna baru mendapat 250 kredit gratis untuk memulai!
             </p>
           </div>
         )}
@@ -203,7 +248,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
         {isLogin && (
           <div className="mt-4 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
             <p className="text-amber-400 text-sm text-center">
-              <strong>Tip:</strong> Make sure you're using the correct email and password. If you don't have an account yet, click "Sign Up" above.
+              <strong>Tips:</strong> Pastikan Anda menggunakan email dan password yang benar. Jika belum punya akun, klik "Daftar" di atas.
             </p>
           </div>
         )}
