@@ -9,6 +9,7 @@ export const useAuth = () => {
     // Get initial session
     const getInitialSession = async () => {
       try {
+        console.log('Getting initial session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -18,8 +19,10 @@ export const useAuth = () => {
         }
 
         if (session?.user) {
+          console.log('Found existing session for user:', session.user.id);
           await fetchUserProfile(session.user.id);
         } else {
+          console.log('No existing session found');
           setLoading(false);
         }
       } catch (error) {
@@ -35,9 +38,9 @@ export const useAuth = () => {
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
         
-        if (session?.user) {
+        if (event === 'SIGNED_IN' && session?.user) {
           await fetchUserProfile(session.user.id);
-        } else {
+        } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setLoading(false);
         }
@@ -61,14 +64,14 @@ export const useAuth = () => {
         console.error('Error fetching user profile:', error);
         
         // If user doesn't exist and we haven't retried too many times
-        if (error.code === 'PGRST116' && retryCount < 5) {
-          console.log('User profile not found, retrying in 1 second...');
-          setTimeout(() => fetchUserProfile(userId, retryCount + 1), 1000);
+        if (error.code === 'PGRST116' && retryCount < 3) {
+          console.log('User profile not found, retrying in 2 seconds...');
+          setTimeout(() => fetchUserProfile(userId, retryCount + 1), 2000);
           return;
         }
         
         // If still no user after retries, create manually
-        if (error.code === 'PGRST116' && retryCount >= 5) {
+        if (error.code === 'PGRST116' && retryCount >= 3) {
           console.log('Creating user profile manually...');
           await createUserProfile(userId);
           return;
@@ -80,18 +83,22 @@ export const useAuth = () => {
       if (data) {
         console.log('User profile found:', data);
         setUser(data);
-      } else if (retryCount < 5) {
+      } else if (retryCount < 3) {
         console.log('No user profile found, retrying...');
-        setTimeout(() => fetchUserProfile(userId, retryCount + 1), 1000);
+        setTimeout(() => fetchUserProfile(userId, retryCount + 1), 2000);
         return;
       } else {
         // Create user profile manually if not found after retries
+        console.log('Creating user profile manually after retries...');
         await createUserProfile(userId);
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
-    } finally {
       setLoading(false);
+    } finally {
+      if (retryCount === 0) {
+        setLoading(false);
+      }
     }
   };
 
@@ -123,16 +130,18 @@ export const useAuth = () => {
       if (error) {
         // If user already exists, fetch it
         if (error.code === '23505') {
+          console.log('User already exists, fetching...');
           await fetchUserProfile(userId, 0);
           return;
         }
         throw error;
       }
 
-      console.log('User profile created:', data);
+      console.log('User profile created successfully:', data);
       setUser(data);
     } catch (error) {
       console.error('Error creating user profile:', error);
+    } finally {
       setLoading(false);
     }
   };
@@ -159,14 +168,6 @@ export const useAuth = () => {
       }
 
       console.log('Sign up successful:', data);
-      
-      // If user is immediately confirmed (email confirmation disabled)
-      if (data.user && data.session) {
-        console.log('User immediately confirmed, creating profile...');
-        // The auth state change will trigger profile creation
-      } else if (data.user && !data.session) {
-        console.log('User created but needs email confirmation');
-      }
       
       return { data, error: null };
     } catch (error) {
