@@ -1,198 +1,267 @@
-# Lunarpedia PaaS Platform
+# Lunarpedia PaaS Platform - Laravel Version
 
-A modern Platform-as-a-Service (PaaS) solution for deploying Docker containers with integrated billing and user management.
+Platform-as-a-Service (PaaS) yang powerful untuk mengelola container Docker dengan sistem billing terintegrasi dan manajemen pengguna.
 
-## Features
+## 🚀 Fitur Utama
 
-- 🚀 **One-Click Docker Deployment** - Deploy popular services like n8n, Chatwoot, PostgreSQL
-- 💳 **Credit-Based Billing** - Flexible pay-as-you-use pricing model
-- 🔐 **Secure Authentication** - Powered by Supabase Auth
-- 🌐 **Custom Domains** - Premium add-on for custom domain support
-- 📊 **Real-time Dashboard** - Monitor services and usage
-- 🛡️ **Admin Panel** - Comprehensive management interface
-- 💰 **Automatic Refunds** - Pro-rated refunds for cancelled services
+- **Deploy Docker One-Click** - Deploy layanan populer seperti n8n, Chatwoot, PostgreSQL
+- **Sistem Kredit Fleksibel** - Model pricing pay-as-you-use yang fleksibel
+- **Autentikasi Aman** - Sistem login/register dengan Laravel Auth
+- **Domain Kustom** - Add-on premium untuk dukungan domain kustom
+- **Dashboard Real-time** - Monitor layanan dan penggunaan
+- **Panel Admin** - Interface manajemen yang komprehensif
+- **Refund Otomatis** - Refund pro-rata untuk layanan yang dibatalkan
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-- **Frontend**: React 18 + TypeScript + Tailwind CSS
-- **Backend**: Supabase (PostgreSQL + Auth + Real-time)
-- **Icons**: Lucide React
+- **Backend**: Laravel 10 + PHP 8.1+
+- **Database**: MySQL 8.0+
+- **Frontend**: Blade Templates + Tailwind CSS + Alpine.js
+- **Icons**: Heroicons (SVG)
 - **Build Tool**: Vite
-- **Deployment**: Netlify (recommended)
 
-## Getting Started
+## 📋 Persyaratan Sistem
 
-### Prerequisites
-
-- Node.js 18+ 
-- Supabase account
+- PHP 8.1 atau lebih tinggi
+- Composer
+- MySQL 8.0 atau lebih tinggi
+- Node.js 18+ (untuk build assets)
 - Git
 
-### Local Development
+## 🚀 Instalasi & Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd lunarpedia-paas-platform
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Setup Supabase**
-   - Create a new Supabase project at [supabase.com](https://supabase.com)
-   - Copy your project URL and anon key
-   - Run the database migration in the Supabase SQL editor
-
-4. **Environment Configuration**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Update `.env` with your Supabase credentials:
-   ```env
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-5. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-
-6. **Access the application**
-   - Open http://localhost:5173
-   - Create an account or sign in
-   - Start deploying services!
-
-### Database Setup
-
-The application uses Supabase as the backend. Run the migration file `supabase/migrations/create_initial_schema.sql` in your Supabase SQL editor to set up:
-
-- User management with credit system
-- Service types and user services
-- Credit transactions and billing
-- Premium add-ons system
-- Row Level Security (RLS) policies
-
-### Admin Access
-
-To create an admin user:
-
-1. Sign up normally through the application
-2. In your Supabase dashboard, go to Table Editor > users
-3. Find your user record and change the `role` field from `'user'` to `'admin'`
-4. Sign out and sign back in to access admin features
-
-## Deployment
-
-### Netlify Deployment
-
-1. **Build the project**
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy to Netlify**
-   - Connect your GitHub repository to Netlify
-   - Set build command: `npm run build`
-   - Set publish directory: `dist`
-   - Add environment variables in Netlify dashboard
-
-3. **Environment Variables**
-   Add these in your Netlify dashboard:
-   ```
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-### Manual Deployment
-
-You can deploy the built files to any static hosting service:
-
+### 1. Clone Repository
 ```bash
+git clone <repository-url>
+cd lunarpedia-paas-platform
+```
+
+### 2. Install Dependencies
+```bash
+# Install PHP dependencies
+composer install
+
+# Install Node.js dependencies
+npm install
+```
+
+### 3. Environment Configuration
+```bash
+# Copy environment file
+cp .env.example .env
+
+# Generate application key
+php artisan key:generate
+```
+
+### 4. Database Setup
+Edit file `.env` dengan konfigurasi database MySQL Anda:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=lunarpedia_paas
+DB_USERNAME=root
+DB_PASSWORD=your_password
+
+# Admin Configuration
+ADMIN_EMAIL=novian@digilunar.com
+ADMIN_PASSWORD=novian@digilunar.com
+ADMIN_NAME="Novian Admin"
+```
+
+### 5. Jalankan Migrasi & Seeder
+```bash
+# Buat database (jika belum ada)
+mysql -u root -p -e "CREATE DATABASE lunarpedia_paas"
+
+# Jalankan migrasi
+php artisan migrate
+
+# Jalankan seeder (akan membuat admin user dan service types default)
+php artisan db:seed
+```
+
+### 6. Build Assets
+```bash
+# Development
+npm run dev
+
+# Production
 npm run build
-# Upload the 'dist' folder to your hosting provider
 ```
 
-## Project Structure
+### 7. Jalankan Server
+```bash
+# Development server
+php artisan serve
 
-```
-src/
-├── components/          # React components
-│   ├── LandingPage.tsx     # Marketing landing page
-│   ├── UserDashboard.tsx   # User service management
-│   ├── AdminDashboard.tsx  # Admin panel
-│   ├── AuthModal.tsx       # Authentication modal
-│   ├── PaymentModal.tsx    # Credit purchase modal
-│   └── UserAddonsPage.tsx  # Premium add-ons
-├── hooks/              # Custom React hooks
-│   ├── useAuth.ts         # Authentication logic
-│   └── useServices.ts     # Service management
-├── lib/                # Utilities and configuration
-│   └── supabase.ts        # Supabase client and types
-└── App.tsx             # Main application component
-
-supabase/
-└── migrations/         # Database schema
-    └── create_initial_schema.sql
+# Akses aplikasi di: http://localhost:8000
 ```
 
-## Key Features Explained
+## 👤 Akun Admin Default
 
-### Credit System
-- Users start with 250 welcome credits
-- Services cost credits per month (n8n: 50, Chatwoot: 40, PostgreSQL: 30)
-- Automatic pro-rated refunds when services are cancelled
-- Credit purchase system with bonus credits
+Setelah menjalankan seeder, Anda dapat login sebagai admin dengan:
 
-### Service Management
-- One-click deployment of Docker containers
-- Automatic URL generation with subdomain
-- Environment variable management with auto-generated secrets
-- Service status monitoring (running, stopped, pending, error)
+- **Email**: novian@digilunar.com
+- **Password**: novian@digilunar.com
+
+## 📊 Struktur Database
+
+### Tables:
+- **users** - Sistem pengguna dengan 250 kredit gratis
+- **service_types** - Template layanan Docker yang tersedia
+- **services** - Layanan yang di-deploy oleh user
+- **credit_transactions** - Tracking penggunaan dan pembelian kredit
+- **user_addons** - Premium add-ons untuk layanan
+
+### Default Service Types:
+- **n8n** (50 kredit/bulan) - Platform otomasi workflow
+- **Chatwoot** (40 kredit/bulan) - Platform customer support
+- **PostgreSQL** (30 kredit/bulan) - Database PostgreSQL
+
+## 🎯 Fitur Utama
+
+### Sistem Kredit
+- User baru mendapat 250 kredit gratis
+- Layanan membutuhkan kredit per bulan
+- Refund otomatis pro-rata saat layanan dibatalkan
+- Sistem pembelian kredit dengan bonus
+
+### Manajemen Layanan
+- Deploy one-click container Docker
+- Generate URL otomatis dengan subdomain
+- Manajemen environment variables dengan auto-generate secrets
+- Monitoring status layanan (running, stopped, pending, error)
 
 ### Premium Add-ons
-- Custom domain support (+25 credits/month)
-- SSL certificates
+- Dukungan domain kustom (+25 kredit/bulan)
+- Sertifikat SSL
 - Priority support
 - Advanced analytics
 
-### Security
-- Row Level Security (RLS) on all database tables
-- Secure password generation for services
-- User isolation - users can only access their own data
-- Admin-only access to service type management
+### Keamanan
+- Laravel Authentication & Authorization
+- Policy-based access control
+- User isolation - user hanya bisa akses data sendiri
+- Admin-only access untuk manajemen service types
 
-## API Integration
+## 🔧 Konfigurasi Lanjutan
 
-The application is ready for Docker orchestration integration. Key integration points:
+### Docker Integration
+Aplikasi siap untuk integrasi dengan orchestrator Docker. Key integration points:
 
-- **Service Creation**: `useServices.createService()` - Ready to trigger Docker container deployment
-- **Service Management**: Start/stop/restart functionality hooks available
-- **Environment Variables**: Secure storage and injection into containers
-- **URL Routing**: Automatic subdomain generation and custom domain support
+- **Service Creation**: `DashboardController@createService()` - Siap trigger deployment container
+- **Service Management**: Start/stop/restart functionality
+- **Environment Variables**: Penyimpanan aman dan injeksi ke container
+- **URL Routing**: Generate subdomain otomatis dan dukungan domain kustom
 
-## Contributing
+### Payment Integration
+Siap untuk integrasi dengan payment gateway:
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
+```env
+# Stripe Configuration
+STRIPE_KEY=your_stripe_publishable_key
+STRIPE_SECRET=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_webhook_secret
+```
+
+## 📁 Struktur Project
+
+```
+app/
+├── Http/Controllers/
+│   ├── AuthController.php      # Autentikasi
+│   ├── DashboardController.php # Dashboard user
+│   ├── AdminController.php     # Panel admin
+│   └── HomeController.php      # Landing page
+├── Models/
+│   ├── User.php               # Model user
+│   ├── Service.php            # Model layanan
+│   ├── ServiceType.php        # Model template layanan
+│   ├── CreditTransaction.php  # Model transaksi kredit
+│   └── UserAddon.php          # Model add-ons
+└── Policies/
+    └── ServicePolicy.php      # Authorization policies
+
+resources/views/
+├── layouts/
+│   └── app.blade.php          # Layout utama
+├── auth/
+│   ├── login.blade.php        # Halaman login
+│   └── register.blade.php     # Halaman register
+├── dashboard/
+│   └── index.blade.php        # Dashboard user
+└── welcome.blade.php          # Landing page
+
+database/
+├── migrations/                # Database migrations
+└── seeders/
+    └── DatabaseSeeder.php     # Default data seeder
+```
+
+## 🚀 Deployment
+
+### Production Setup
+
+1. **Server Requirements**
+   - PHP 8.1+ dengan extensions: BCMath, Ctype, Fileinfo, JSON, Mbstring, OpenSSL, PDO, Tokenizer, XML
+   - MySQL 8.0+
+   - Nginx/Apache
+   - Composer
+   - Node.js (untuk build assets)
+
+2. **Environment Configuration**
+   ```env
+   APP_ENV=production
+   APP_DEBUG=false
+   APP_URL=https://yourdomain.com
+   
+   # Database production
+   DB_HOST=your_production_host
+   DB_DATABASE=your_production_db
+   DB_USERNAME=your_production_user
+   DB_PASSWORD=your_secure_password
+   ```
+
+3. **Build & Deploy**
+   ```bash
+   # Install dependencies
+   composer install --optimize-autoloader --no-dev
+   
+   # Build assets
+   npm run build
+   
+   # Cache configuration
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+   
+   # Run migrations
+   php artisan migrate --force
+   
+   # Seed default data
+   php artisan db:seed --force
+   ```
+
+## 🤝 Contributing
+
+1. Fork repository
+2. Buat feature branch: `git checkout -b feature-name`
 3. Commit changes: `git commit -am 'Add feature'`
-4. Push to branch: `git push origin feature-name`
-5. Submit a pull request
+4. Push ke branch: `git push origin feature-name`
+5. Submit pull request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+Project ini dilisensikan di bawah MIT License.
 
-## Support
+## 📞 Support
 
-For support and questions:
-- Create an issue in the GitHub repository
+Untuk support dan pertanyaan:
+- Buat issue di GitHub repository
 - Contact: support@lunarpedia.com
 
 ---
 
-Built with ❤️ using React, Supabase, and modern web technologies.
+Dibuat dengan ❤️ menggunakan Laravel, MySQL, dan teknologi web modern.
