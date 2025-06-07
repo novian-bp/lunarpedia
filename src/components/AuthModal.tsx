@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, Lock, Mail, Loader2 } from 'lucide-react';
+import { X, User, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface AuthModalProps {
@@ -17,6 +17,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
 
   const { signIn, signUp } = useAuth();
 
+  const getErrorMessage = (error: any) => {
+    if (error?.message?.includes('Invalid login credentials')) {
+      return 'Invalid email or password. Please check your credentials and try again.';
+    }
+    if (error?.message?.includes('Email not confirmed')) {
+      return 'Please check your email and click the confirmation link before signing in.';
+    }
+    if (error?.message?.includes('User already registered')) {
+      return 'An account with this email already exists. Please sign in instead.';
+    }
+    if (error?.message?.includes('Password should be at least')) {
+      return 'Password must be at least 6 characters long.';
+    }
+    return error?.message || 'An unexpected error occurred. Please try again.';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -32,16 +48,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
       }
 
       if (result.error) {
-        setError(result.error.message);
+        setError(getErrorMessage(result.error));
       } else if (result.data?.user) {
         // The useAuth hook will handle the user state update
         onClose();
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleModeSwitch = () => {
+    setIsLogin(!isLogin);
+    setError('');
+    setEmail('');
+    setPassword('');
+    setName('');
   };
 
   return (
@@ -64,8 +88,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-            <p className="text-red-400 text-sm">{error}</p>
+          <div className="mb-4 p-3 bg-red-500/10 rounded-lg border border-red-500/20 flex items-start space-x-2">
+            <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-red-400 text-sm">{error}</p>
+              {error.includes('Invalid email or password') && (
+                <p className="text-red-300/70 text-xs mt-1">
+                  Don't have an account?{' '}
+                  <button
+                    onClick={handleModeSwitch}
+                    className="text-red-300 hover:text-red-200 underline"
+                    disabled={loading}
+                  >
+                    Sign up here
+                  </button>
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -119,6 +158,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
                 minLength={6}
               />
             </div>
+            {!isLogin && (
+              <p className="text-white/50 text-xs mt-1">Password must be at least 6 characters long</p>
+            )}
           </div>
 
           <button
@@ -141,10 +183,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
           <p className="text-white/60">
             {isLogin ? "Don't have an account?" : "Already have an account?"}
             <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError('');
-              }}
+              onClick={handleModeSwitch}
               className="text-purple-400 hover:text-purple-300 ml-1 font-semibold"
               disabled={loading}
             >
@@ -157,6 +196,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
           <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
             <p className="text-blue-400 text-sm text-center">
               New users receive 250 welcome credits to get started!
+            </p>
+          </div>
+        )}
+
+        {isLogin && (
+          <div className="mt-4 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+            <p className="text-amber-400 text-sm text-center">
+              <strong>Tip:</strong> Make sure you're using the correct email and password. If you don't have an account yet, click "Sign Up" above.
             </p>
           </div>
         )}
