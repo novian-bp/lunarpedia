@@ -1,5 +1,32 @@
 import React, { useState } from 'react';
-import { Users, Server, CreditCard, Settings, LogOut, Plus, Edit, Trash2, Cloud, X, Save, Ambulance as Cancel, Package, Play, Pause, Eye, EyeOff, Pocket as Docker } from 'lucide-react';
+import { 
+  Users, 
+  Server, 
+  CreditCard, 
+  Settings, 
+  LogOut, 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Cloud, 
+  X, 
+  Save, 
+  Ambulance as Cancel, 
+  Package, 
+  Play, 
+  Pause, 
+  Eye, 
+  EyeOff, 
+  Pocket as Docker,
+  TestTube,
+  CheckCircle,
+  AlertTriangle,
+  Globe,
+  Shield,
+  RefreshCw,
+  ExternalLink,
+  Zap
+} from 'lucide-react';
 
 interface AdminDashboardProps {
   user: any;
@@ -7,7 +34,7 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'services' | 'settings'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'services' | 'domains' | 'settings'>('users');
   
   // Mock data for users
   const [users, setUsers] = useState([
@@ -15,6 +42,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
     { id: 2, name: 'Jane Smith', email: 'jane@example.com', credits: 180, status: 'active', joinDate: '2024-01-20' },
     { id: 3, name: 'Bob Wilson', email: 'bob@example.com', credits: 50, status: 'suspended', joinDate: '2024-01-25' }
   ]);
+
+  // Domain settings
+  const [domainSettings, setDomainSettings] = useState({
+    baseDomain: 'lunarpedia.app',
+    wildcardDomain: '*.user.lunarpedia.app',
+    sslEnabled: true,
+    autoSSL: true,
+    customDomainPrice: 25
+  });
 
   // Mock data for available Docker services
   const [availableServices, setAvailableServices] = useState([
@@ -27,15 +63,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       credits: 50,
       ports: [{ internal: 5678, external: 5678, protocol: 'HTTP' }],
       environment: [
-        { key: 'N8N_BASIC_AUTH_ACTIVE', value: 'true', required: true },
-        { key: 'N8N_BASIC_AUTH_USER', value: 'admin', required: true },
-        { key: 'N8N_BASIC_AUTH_PASSWORD', value: '', required: true, secret: true }
+        { key: 'N8N_BASIC_AUTH_ACTIVE', value: 'true', required: true, autoGenerate: false },
+        { key: 'N8N_BASIC_AUTH_USER', value: 'admin', required: true, autoGenerate: false },
+        { key: 'N8N_BASIC_AUTH_PASSWORD', value: '', required: true, secret: true, autoGenerate: true }
       ],
       volumes: [
         { host: '/data/n8n', container: '/home/node/.n8n', type: 'persistent' }
       ],
       status: 'published',
-      icon: 'Zap'
+      icon: 'Zap',
+      testStatus: 'passed',
+      testUrl: 'https://n8n-test.admin.lunarpedia.app',
+      lastTested: '2024-01-20'
     },
     {
       id: 2,
@@ -46,15 +85,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       credits: 40,
       ports: [{ internal: 3000, external: 3000, protocol: 'HTTP' }],
       environment: [
-        { key: 'POSTGRES_PASSWORD', value: '', required: true, secret: true },
-        { key: 'REDIS_PASSWORD', value: '', required: true, secret: true },
-        { key: 'SECRET_KEY_BASE', value: '', required: true, secret: true }
+        { key: 'POSTGRES_PASSWORD', value: '', required: true, secret: true, autoGenerate: true },
+        { key: 'REDIS_PASSWORD', value: '', required: true, secret: true, autoGenerate: true },
+        { key: 'SECRET_KEY_BASE', value: '', required: true, secret: true, autoGenerate: true }
       ],
       volumes: [
         { host: '/data/chatwoot', container: '/app/storage', type: 'persistent' }
       ],
-      status: 'published',
-      icon: 'MessageSquare'
+      status: 'draft',
+      icon: 'MessageSquare',
+      testStatus: 'testing',
+      testUrl: 'https://chatwoot-test.admin.lunarpedia.app',
+      lastTested: null
     },
     {
       id: 3,
@@ -65,15 +107,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       credits: 30,
       ports: [{ internal: 5432, external: 5432, protocol: 'TCP' }],
       environment: [
-        { key: 'POSTGRES_DB', value: 'myapp', required: true },
-        { key: 'POSTGRES_USER', value: 'admin', required: true },
-        { key: 'POSTGRES_PASSWORD', value: '', required: true, secret: true }
+        { key: 'POSTGRES_DB', value: 'myapp', required: true, autoGenerate: false },
+        { key: 'POSTGRES_USER', value: 'admin', required: true, autoGenerate: false },
+        { key: 'POSTGRES_PASSWORD', value: '', required: true, secret: true, autoGenerate: true }
       ],
       volumes: [
         { host: '/data/postgres', container: '/var/lib/postgresql/data', type: 'persistent' }
       ],
       status: 'draft',
-      icon: 'Database'
+      icon: 'Database',
+      testStatus: 'failed',
+      testUrl: 'https://postgres-test.admin.lunarpedia.app',
+      lastTested: '2024-01-19'
     }
   ]);
 
@@ -81,8 +126,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const [showEditUser, setShowEditUser] = useState(false);
   const [showAddService, setShowAddService] = useState(false);
   const [showEditService, setShowEditService] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
+  const [showDomainSettings, setShowDomainSettings] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [editingService, setEditingService] = useState<any>(null);
+  const [testingService, setTestingService] = useState<any>(null);
 
   // Form states
   const [userForm, setUserForm] = useState({ name: '', email: '', credits: 0, status: 'active' });
@@ -93,10 +141,47 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
     category: '',
     credits: 0,
     ports: [{ internal: 80, external: 80, protocol: 'HTTP' }],
-    environment: [{ key: '', value: '', required: false, secret: false }],
+    environment: [{ key: '', value: '', required: false, secret: false, autoGenerate: false }],
     volumes: [{ host: '', container: '', type: 'persistent' }],
     status: 'draft'
   });
+
+  // Auto-generation functions
+  const generatePassword = (length: number = 16) => {
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return password;
+  };
+
+  const generateSecretKey = (length: number = 32) => {
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let key = '';
+    for (let i = 0; i < length; i++) {
+      key += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return key;
+  };
+
+  const generateTestDomain = (serviceName: string) => {
+    const cleanName = serviceName.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    return `https://${cleanName}-test.admin.${domainSettings.baseDomain}`;
+  };
+
+  const generateUserDomain = (serviceName: string, userId: number) => {
+    const cleanName = serviceName.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    return `https://${cleanName}-${userId}.user.${domainSettings.baseDomain}`;
+  };
 
   // Edit user functions
   const handleEditUser = (user: any) => {
@@ -137,7 +222,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       category: '',
       credits: 0,
       ports: [{ internal: 80, external: 80, protocol: 'HTTP' }],
-      environment: [{ key: '', value: '', required: false, secret: false }],
+      environment: [{ key: '', value: '', required: false, secret: false, autoGenerate: false }],
       volumes: [{ host: '', container: '', type: 'persistent' }],
       status: 'draft'
     });
@@ -154,7 +239,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
     if (editingService) {
       // Update existing service
       setAvailableServices(availableServices.map(service =>
-        service.id === editingService.id ? { ...service, ...serviceForm } : service
+        service.id === editingService.id ? { 
+          ...service, 
+          ...serviceForm,
+          testStatus: 'pending',
+          testUrl: generateTestDomain(serviceForm.name),
+          lastTested: null
+        } : service
       ));
       setShowEditService(false);
       setEditingService(null);
@@ -163,7 +254,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
       const newService = {
         ...serviceForm,
         id: Date.now(),
-        icon: 'Package'
+        icon: 'Package',
+        testStatus: 'pending',
+        testUrl: generateTestDomain(serviceForm.name),
+        lastTested: null
       };
       setAvailableServices([...availableServices, newService]);
       setShowAddService(false);
@@ -177,11 +271,63 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   };
 
   const toggleServiceStatus = (serviceId: number) => {
+    const service = availableServices.find(s => s.id === serviceId);
+    if (service && service.testStatus !== 'passed') {
+      alert('Service must pass testing before it can be published!');
+      return;
+    }
+    
     setAvailableServices(availableServices.map(service =>
       service.id === serviceId
         ? { ...service, status: service.status === 'published' ? 'draft' : 'published' }
         : service
     ));
+  };
+
+  // Testing functions
+  const handleTestService = (service: any) => {
+    setTestingService(service);
+    setShowTestModal(true);
+  };
+
+  const runServiceTest = async () => {
+    if (!testingService) return;
+
+    // Update service status to testing
+    setAvailableServices(availableServices.map(service =>
+      service.id === testingService.id
+        ? { ...service, testStatus: 'testing' }
+        : service
+    ));
+
+    setShowTestModal(false);
+
+    // Simulate testing process
+    setTimeout(() => {
+      const success = Math.random() > 0.3; // 70% success rate for demo
+      
+      setAvailableServices(availableServices.map(service =>
+        service.id === testingService.id
+          ? { 
+              ...service, 
+              testStatus: success ? 'passed' : 'failed',
+              lastTested: new Date().toISOString().split('T')[0]
+            }
+          : service
+      ));
+
+      if (success) {
+        alert(`✅ Test passed! ${testingService.name} is ready to be published.`);
+      } else {
+        alert(`❌ Test failed! Please check the configuration for ${testingService.name}.`);
+      }
+    }, 3000);
+  };
+
+  // Domain settings functions
+  const saveDomainSettings = () => {
+    setShowDomainSettings(false);
+    alert('Domain settings saved successfully!');
   };
 
   // Helper functions for service form
@@ -208,7 +354,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
   const addEnvironment = () => {
     setServiceForm({
       ...serviceForm,
-      environment: [...serviceForm.environment, { key: '', value: '', required: false, secret: false }]
+      environment: [...serviceForm.environment, { key: '', value: '', required: false, secret: false, autoGenerate: false }]
     });
   };
 
@@ -243,6 +389,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
     const newVolumes = [...serviceForm.volumes];
     newVolumes[index] = { ...newVolumes[index], [field]: value };
     setServiceForm({ ...serviceForm, volumes: newVolumes });
+  };
+
+  const getTestStatusColor = (status: string) => {
+    switch (status) {
+      case 'passed': return 'text-green-400 bg-green-400/20';
+      case 'failed': return 'text-red-400 bg-red-400/20';
+      case 'testing': return 'text-yellow-400 bg-yellow-400/20';
+      default: return 'text-gray-400 bg-gray-400/20';
+    }
+  };
+
+  const getTestStatusIcon = (status: string) => {
+    switch (status) {
+      case 'passed': return <CheckCircle className="w-4 h-4" />;
+      case 'failed': return <AlertTriangle className="w-4 h-4" />;
+      case 'testing': return <RefreshCw className="w-4 h-4 animate-spin" />;
+      default: return <TestTube className="w-4 h-4" />;
+    }
   };
 
   return (
@@ -294,6 +458,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
           >
             <Server className="w-5 h-5 mr-2" />
             Docker Services
+          </button>
+          <button
+            onClick={() => setActiveTab('domains')}
+            className={`flex items-center px-6 py-3 rounded-lg transition-all duration-200 ${
+              activeTab === 'domains'
+                ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <Globe className="w-5 h-5 mr-2" />
+            Domain Management
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -425,6 +600,53 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
 
                   <p className="text-white/70 text-sm mb-4">{service.description}</p>
 
+                  {/* Test Status */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-white/60 text-sm">Test Status:</span>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full flex items-center space-x-1 ${getTestStatusColor(service.testStatus)}`}>
+                        {getTestStatusIcon(service.testStatus)}
+                        <span className="ml-1">{service.testStatus}</span>
+                      </span>
+                    </div>
+                    {service.lastTested && (
+                      <p className="text-white/40 text-xs">Last tested: {service.lastTested}</p>
+                    )}
+                    {service.testUrl && (
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Globe className="w-3 h-3 text-blue-400" />
+                        <a 
+                          href={service.testUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-400 text-xs hover:text-blue-300 flex items-center"
+                        >
+                          Test URL
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Test Button */}
+                  <button
+                    onClick={() => handleTestService(service)}
+                    disabled={service.testStatus === 'testing'}
+                    className="w-full mb-3 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {service.testStatus === 'testing' ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Testing...
+                      </>
+                    ) : (
+                      <>
+                        <TestTube className="w-4 h-4 mr-2" />
+                        Run Test
+                      </>
+                    )}
+                  </button>
+
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between">
                       <span className="text-white/60">Docker Image:</span>
@@ -433,14 +655,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                     <div className="flex justify-between">
                       <span className="text-white/60">Category:</span>
                       <span className="text-white">{service.category}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/60">Ports:</span>
-                      <span className="text-white">{service.ports.length} configured</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/60">Environment:</span>
-                      <span className="text-white">{service.environment.length} variables</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-white/60">Status:</span>
@@ -453,6 +667,98 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Domain Management Tab */}
+        {activeTab === 'domains' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-white">Domain Management</h2>
+              <button
+                onClick={() => setShowDomainSettings(true)}
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-200"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Domain Settings
+              </button>
+            </div>
+
+            {/* Current Domain Configuration */}
+            <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
+              <h3 className="text-xl font-bold text-white mb-4">Current Configuration</h3>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-white/80 text-sm font-medium mb-2">Base Domain</label>
+                    <div className="flex items-center space-x-2">
+                      <Globe className="w-5 h-5 text-blue-400" />
+                      <span className="text-white font-mono">{domainSettings.baseDomain}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-white/80 text-sm font-medium mb-2">Wildcard Domain</label>
+                    <div className="flex items-center space-x-2">
+                      <Globe className="w-5 h-5 text-purple-400" />
+                      <span className="text-white font-mono">{domainSettings.wildcardDomain}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-white/80 text-sm font-medium mb-2">SSL Configuration</label>
+                    <div className="flex items-center space-x-2">
+                      <Shield className="w-5 h-5 text-green-400" />
+                      <span className="text-green-400">
+                        {domainSettings.sslEnabled ? 'SSL Enabled' : 'SSL Disabled'}
+                      </span>
+                    </div>
+                    {domainSettings.autoSSL && (
+                      <p className="text-white/60 text-sm mt-1">Auto SSL provisioning enabled</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-white/80 text-sm font-medium mb-2">Custom Domain Pricing</label>
+                    <div className="flex items-center space-x-2">
+                      <CreditCard className="w-5 h-5 text-yellow-400" />
+                      <span className="text-white">{domainSettings.customDomainPrice} credits/month</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Domain Examples */}
+            <div className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 p-6">
+              <h3 className="text-xl font-bold text-white mb-4">Domain Examples</h3>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-white/80 font-medium mb-2">User Service Domains</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Globe className="w-4 h-4 text-blue-400" />
+                      <span className="text-blue-400 font-mono">my-workflow-123.user.{domainSettings.baseDomain}</span>
+                      <span className="text-white/60 text-sm">- User service subdomain</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Globe className="w-4 h-4 text-yellow-400" />
+                      <span className="text-yellow-400 font-mono">workflow.mycompany.com</span>
+                      <span className="text-white/60 text-sm">- Custom domain (premium)</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-white/80 font-medium mb-2">Admin Test Domains</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Globe className="w-4 h-4 text-purple-400" />
+                      <span className="text-purple-400 font-mono">n8n-test.admin.{domainSettings.baseDomain}</span>
+                      <span className="text-white/60 text-sm">- Admin testing subdomain</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -487,6 +793,151 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
           </div>
         )}
       </div>
+
+      {/* Test Service Modal */}
+      {showTestModal && testingService && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl border border-white/10 p-8 max-w-md w-full">
+            <div className="flex items-center mb-6">
+              <TestTube className="w-8 h-8 text-blue-400 mr-3" />
+              <h3 className="text-2xl font-bold text-white">Test Docker Service</h3>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-white/80 mb-4">
+                Ready to test <span className="font-semibold text-white">"{testingService.name}"</span>?
+              </p>
+              
+              <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/20 mb-4">
+                <h4 className="text-blue-400 font-semibold mb-2">Test Process</h4>
+                <ul className="text-blue-400/80 text-sm space-y-1">
+                  <li>• Deploy service to test environment</li>
+                  <li>• Verify Docker container startup</li>
+                  <li>• Check port accessibility</li>
+                  <li>• Test SSL certificate provisioning</li>
+                  <li>• Validate environment variables</li>
+                </ul>
+              </div>
+
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Globe className="w-4 h-4 text-purple-400" />
+                  <span className="text-white/80 text-sm">Test URL:</span>
+                </div>
+                <p className="text-purple-400 font-mono text-sm">{testingService.testUrl}</p>
+              </div>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowTestModal(false);
+                  setTestingService(null);
+                }}
+                className="flex-1 px-4 py-3 border border-white/20 text-white rounded-lg hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={runServiceTest}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200"
+              >
+                Start Test
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Domain Settings Modal */}
+      {showDomainSettings && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl border border-white/10 p-8 max-w-2xl w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-white">Domain Settings</h3>
+              <button
+                onClick={() => setShowDomainSettings(false)}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-white/80 text-sm font-medium mb-2">Base Domain</label>
+                  <input
+                    type="text"
+                    value={domainSettings.baseDomain}
+                    onChange={(e) => setDomainSettings({...domainSettings, baseDomain: e.target.value})}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-purple-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/80 text-sm font-medium mb-2">Wildcard Domain</label>
+                  <input
+                    type="text"
+                    value={domainSettings.wildcardDomain}
+                    onChange={(e) => setDomainSettings({...domainSettings, wildcardDomain: e.target.value})}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-purple-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={domainSettings.sslEnabled}
+                      onChange={(e) => setDomainSettings({...domainSettings, sslEnabled: e.target.checked})}
+                      className="text-purple-500"
+                    />
+                    <span className="text-white/80">Enable SSL</span>
+                  </label>
+                </div>
+                <div>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={domainSettings.autoSSL}
+                      onChange={(e) => setDomainSettings({...domainSettings, autoSSL: e.target.checked})}
+                      className="text-purple-500"
+                    />
+                    <span className="text-white/80">Auto SSL Provisioning</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-white/80 text-sm font-medium mb-2">Custom Domain Price (credits/month)</label>
+                <input
+                  type="number"
+                  value={domainSettings.customDomainPrice}
+                  onChange={(e) => setDomainSettings({...domainSettings, customDomainPrice: parseInt(e.target.value) || 0})}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-purple-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowDomainSettings(false)}
+                className="flex-1 px-4 py-3 border border-white/20 text-white rounded-lg hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveDomainSettings}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-200"
+              >
+                Save Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit User Modal */}
       {showEditUser && (
@@ -747,6 +1198,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout }) => {
                             className="text-purple-500"
                           />
                           <span className="text-xs text-white/60">Secret</span>
+                        </label>
+                        <label className="flex items-center space-x-1">
+                          <input
+                            type="checkbox"
+                            checked={env.autoGenerate}
+                            onChange={(e) => updateEnvironment(index, 'autoGenerate', e.target.checked)}
+                            className="text-purple-500"
+                          />
+                          <span className="text-xs text-white/60">Auto</span>
                         </label>
                         <button
                           onClick={() => removeEnvironment(index)}
