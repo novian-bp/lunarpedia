@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, User, Lock, Mail } from 'lucide-react';
+import { X, User, Lock, Mail, Loader2 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -11,20 +12,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { signIn, signUp } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Demo authentication
-    const user = {
-      id: 1,
-      name: isLogin ? 'John Doe' : name,
-      email: email,
-      credits: 250,
-      role: email === 'admin@lunarpedia.com' ? 'admin' : 'user'
-    };
-    
-    onLogin(user);
+    setLoading(true);
+    setError('');
+
+    try {
+      let result;
+      
+      if (isLogin) {
+        result = await signIn(email, password);
+      } else {
+        result = await signUp(email, password, name);
+      }
+
+      if (result.error) {
+        setError(result.error.message);
+      } else if (result.data?.user) {
+        // The useAuth hook will handle the user state update
+        onClose();
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -46,6 +63,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
           </p>
         </div>
 
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
@@ -59,6 +82,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
                   className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-purple-500 focus:outline-none"
                   placeholder="Enter your full name"
                   required={!isLogin}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -75,6 +99,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
                 className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-purple-500 focus:outline-none"
                 placeholder="Enter your email"
                 required
+                disabled={loading}
               />
             </div>
           </div>
@@ -90,15 +115,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
                 className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/20 rounded-lg text-white placeholder-white/50 focus:border-purple-500 focus:outline-none"
                 placeholder="Enter your password"
                 required
+                disabled={loading}
+                minLength={6}
               />
             </div>
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-200 font-semibold"
+            disabled={loading}
+            className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            {isLogin ? 'Sign In' : 'Create Account'}
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {isLogin ? 'Signing In...' : 'Creating Account...'}
+              </>
+            ) : (
+              isLogin ? 'Sign In' : 'Create Account'
+            )}
           </button>
         </form>
 
@@ -106,19 +141,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
           <p className="text-white/60">
             {isLogin ? "Don't have an account?" : "Already have an account?"}
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError('');
+              }}
               className="text-purple-400 hover:text-purple-300 ml-1 font-semibold"
+              disabled={loading}
             >
               {isLogin ? 'Sign Up' : 'Sign In'}
             </button>
           </p>
         </div>
 
-        <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-          <p className="text-blue-400 text-sm text-center">
-            Demo: Use any email/password or admin@lunarpedia.com for admin access
-          </p>
-        </div>
+        {!isLogin && (
+          <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+            <p className="text-blue-400 text-sm text-center">
+              New users receive 250 welcome credits to get started!
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
