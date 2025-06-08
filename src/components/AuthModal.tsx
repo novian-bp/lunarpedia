@@ -58,7 +58,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
           setSuccess('Berhasil masuk! Mengarahkan ke dashboard...');
           setTimeout(() => {
             onClose();
-          }, 1500);
+          }, 1000);
         }
       } else {
         // Sign up process
@@ -83,7 +83,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
             setSuccess('Akun berhasil dibuat! Selamat datang di Lunarpedia!');
             setTimeout(() => {
               onClose();
-            }, 1500);
+            }, 1000);
           }
         }
       }

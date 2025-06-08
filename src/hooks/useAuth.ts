@@ -67,11 +67,12 @@ export const useAuth = () => {
                 if (mounted) {
                   fetchUserProfile(userId);
                 }
-              }, 2000);
+              }, 1000); // Reduced wait time
               return;
             } else {
-              setError('Failed to create user profile');
-              setLoading(false);
+              // If still no profile after retries, create it manually
+              console.log('Creating user profile manually...');
+              await createUserProfile(userId);
               return;
             }
           }
@@ -86,19 +87,8 @@ export const useAuth = () => {
           setUser(data);
           setError(null);
         } else {
-          console.log('No user profile found, waiting for creation...');
-          
-          if (retryCount < maxRetries) {
-            retryCount++;
-            setTimeout(() => {
-              if (mounted) {
-                fetchUserProfile(userId);
-              }
-            }, 2000);
-            return;
-          } else {
-            setError('User profile not found');
-          }
+          console.log('No user profile found, creating manually...');
+          await createUserProfile(userId);
         }
       } catch (error) {
         console.error('Error in fetchUserProfile:', error);
@@ -107,6 +97,55 @@ export const useAuth = () => {
         }
       } finally {
         if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const createUserProfile = async (userId: string) => {
+      try {
+        console.log('Creating user profile for:', userId);
+        
+        // Get user data from auth
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !authUser) {
+          console.error('Error getting auth user:', authError);
+          setError('Failed to get user data');
+          setLoading(false);
+          return;
+        }
+
+        // Create user profile
+        const { data, error } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: userId,
+              email: authUser.email || '',
+              name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+              credits: 250,
+              role: 'user'
+            }
+          ])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating user profile:', error);
+          setError('Failed to create user profile');
+          setLoading(false);
+          return;
+        }
+
+        console.log('User profile created:', data);
+        setUser(data);
+        setError(null);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error in createUserProfile:', error);
+        if (mounted) {
+          setError('Failed to create user profile');
           setLoading(false);
         }
       }
@@ -123,11 +162,16 @@ export const useAuth = () => {
         
         retryCount = 0; // Reset retry count on auth change
         
-        if (session?.user) {
+        if (event === 'SIGNED_IN' && session?.user) {
           setLoading(true);
           setError(null);
-          await fetchUserProfile(session.user.id);
-        } else {
+          // Add a small delay to ensure database trigger has time to run
+          setTimeout(() => {
+            if (mounted) {
+              fetchUserProfile(session.user.id);
+            }
+          }, 500);
+        } else if (event === 'SIGNED_OUT') {
           setUser(null);
           setError(null);
           setLoading(false);
@@ -159,6 +203,13 @@ export const useAuth = () => {
       if (error) throw error;
 
       console.log('Sign up successful:', data);
+      
+      // If user is immediately confirmed (email confirmation disabled)
+      if (data.user && data.session) {
+        console.log('User confirmed immediately, waiting for profile creation...');
+        // Profile will be created by the auth state change listener
+      }
+      
       return { data, error: null };
     } catch (error: any) {
       console.error('Sign up error:', error);
