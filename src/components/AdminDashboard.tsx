@@ -1,40 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Server, 
-  CreditCard, 
-  LogOut, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye,
-  Settings,
-  Activity,
-  Package,
-  Docker,
-  Play,
-  Pause,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  TestTube,
-  Upload,
-  Download,
-  Globe,
-  Database,
-  Zap,
-  MessageSquare,
-  Shield,
-  Monitor,
-  Code,
-  Layers,
-  Terminal,
-  RefreshCw,
-  ExternalLink,
-  Copy,
-  Save,
-  X
-} from 'lucide-react';
+import { Users, Server, CreditCard, LogOut, Plus, Edit, Trash2, Eye, Settings, Activity, Package, Pocket as Docker, Play, Pause, CheckCircle, XCircle, AlertTriangle, TestTube, Upload, Download, Globe, Database, Zap, MessageSquare, Shield, Monitor, Code, Layers, Terminal, RefreshCw, ExternalLink, Copy, Save, X } from 'lucide-react';
 
 interface AdminDashboardProps {
   user: any;
