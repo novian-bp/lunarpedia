@@ -4,8 +4,10 @@ import { UserDashboard } from './components/UserDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import { AuthModal } from './components/AuthModal';
 import { PaymentModal } from './components/PaymentModal';
+import { LoadingSpinner } from './components/LoadingSpinner';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './components/Toast';
 import { useAuth } from './hooks/useAuth';
-import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<'landing' | 'dashboard' | 'admin'>('landing');
@@ -32,101 +34,84 @@ function App() {
     setCurrentPage('landing');
   };
 
-  const handleReload = () => {
-    window.location.reload();
-  };
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <LoadingSpinner 
+          size="lg" 
+          text="Memuat Lunarpedia Platform..." 
+          className="text-center"
+        />
+      </div>
+    );
+  }
 
   // Error state
   if (error && !loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-8">
-          <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-white mb-4">Terjadi Kesalahan</h2>
+          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-4">Koneksi Bermasalah</h2>
           <p className="text-white/70 mb-6">
-            {error === 'Failed to get session' && 'Gagal memuat sesi. Silakan coba lagi.'}
-            {error === 'Failed to initialize auth' && 'Gagal menginisialisasi autentikasi.'}
-            {error === 'Failed to create user profile' && 'Gagal membuat profil pengguna.'}
-            {error === 'Failed to fetch user profile' && 'Gagal memuat profil pengguna.'}
-            {error === 'User profile not found' && 'Profil pengguna tidak ditemukan.'}
-            {!['Failed to get session', 'Failed to initialize auth', 'Failed to create user profile', 'Failed to fetch user profile', 'User profile not found'].includes(error) && error}
+            Tidak dapat terhubung ke server. Pastikan koneksi internet Anda stabil dan coba lagi.
           </p>
-          <div className="space-y-3">
-            <button
-              onClick={handleReload}
-              className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-200"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Muat Ulang Halaman
-            </button>
-            <button
-              onClick={() => setCurrentPage('landing')}
-              className="w-full px-6 py-3 border border-white/20 text-white rounded-lg hover:bg-white/5 transition-colors"
-            >
-              Kembali ke Beranda
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-purple-400 animate-spin mx-auto mb-6" />
-          <h2 className="text-2xl font-bold text-white mb-2">Memuat Lunarpedia</h2>
-          <p className="text-white/60 mb-4">Sedang menginisialisasi platform...</p>
-          <div className="flex items-center justify-center space-x-2 text-white/40 text-sm">
-            <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-            <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-            <div className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-200"
+          >
+            Coba Lagi
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {currentPage === 'landing' && (
-        <LandingPage
-          onLoginClick={() => setShowAuthModal(true)}
-          onGetStarted={() => setShowAuthModal(true)}
-        />
-      )}
-      
-      {currentPage === 'dashboard' && user && (
-        <UserDashboard
-          user={user}
-          onLogout={handleLogout}
-          onBuyCredits={() => setShowPaymentModal(true)}
-        />
-      )}
-      
-      {currentPage === 'admin' && user?.role === 'admin' && (
-        <AdminDashboard
-          user={user}
-          onLogout={handleLogout}
-        />
-      )}
+    <ErrorBoundary>
+      <ToastProvider>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+          {currentPage === 'landing' && (
+            <LandingPage
+              onLoginClick={() => setShowAuthModal(true)}
+              onGetStarted={() => setShowAuthModal(true)}
+            />
+          )}
+          
+          {currentPage === 'dashboard' && user && (
+            <UserDashboard
+              user={user}
+              onLogout={handleLogout}
+              onBuyCredits={() => setShowPaymentModal(true)}
+            />
+          )}
+          
+          {currentPage === 'admin' && user?.role === 'admin' && (
+            <AdminDashboard
+              user={user}
+              onLogout={handleLogout}
+            />
+          )}
 
-      {showAuthModal && (
-        <AuthModal
-          onClose={() => setShowAuthModal(false)}
-          onLogin={handleLogin}
-        />
-      )}
+          {showAuthModal && (
+            <AuthModal
+              onClose={() => setShowAuthModal(false)}
+              onLogin={handleLogin}
+            />
+          )}
 
-      {showPaymentModal && user && (
-        <PaymentModal
-          onClose={() => setShowPaymentModal(false)}
-          user={user}
-        />
-      )}
-    </div>
+          {showPaymentModal && user && (
+            <PaymentModal
+              onClose={() => setShowPaymentModal(false)}
+              user={user}
+            />
+          )}
+        </div>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
 
